@@ -41,6 +41,12 @@ func main() {
 		cmdList()
 	case "generate":
 		cmdGenerate()
+	case "search":
+    	if len(os.Args) < 3 {
+        	fmt.Println("Использование: logn search <запрос>")
+        	return
+    	}
+    	cmdSearch(os.Args[2])
 	default:
 		fmt.Println("Неизвестная команда:", command)
 		printHelp()
@@ -253,6 +259,38 @@ func cmdGenerate() {
 	fmt.Println("Сгенерированный пароль:", password)
 }
 
+func cmdSearch(query string) {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	vault, _, err := internal.Open(password)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	results := internal.Search(vault, query)
+	if len(results) == 0 {
+		fmt.Println("Ничего не найдено по запросу:", query)
+		return
+	}
+
+	fmt.Printf("\nНайдено записей: %d\n", len(results))
+	fmt.Println("─────────────────────────────────────")
+	for i, entry := range results {
+		fmt.Printf("%d. Сервис:  %s\n", i+1, entry.Service)
+		fmt.Printf("   Логин:   %s\n", entry.Login)
+		fmt.Printf("   Пароль:  %s\n", entry.Password)
+		if entry.Note != "" {
+			fmt.Printf("   Заметка: %s\n", entry.Note)
+		}
+		fmt.Println("─────────────────────────────────────")
+	}
+}
+
 func printHelp() {
 	fmt.Println(`
 LOGN — менеджер паролей
@@ -262,6 +300,7 @@ LOGN — менеджер паролей
   logn add <сервис>      Добавить запись
   logn get <сервис>      Получить пароль (копирует в буфер)
   logn list              Список всех сервисов
+  logn search <запрос>   Поиск по названию сервиса
   logn delete <сервис>   Удалить запись
   logn generate          Сгенерировать пароль
 	`)

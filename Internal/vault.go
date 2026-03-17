@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 // Инициализация нового хранилища
@@ -115,4 +116,16 @@ func List(vault *Vault) []string {
 		services[i] = e.Service
 	}
 	return services
+}
+
+// Поиск записей по названию сервиса
+func Search(vault *Vault, query string) []Entry {
+	var results []Entry
+	query = strings.ToLower(query)
+	for _, e := range vault.Entries {
+		if strings.Contains(strings.ToLower(e.Service), query) {
+			results = append(results, e)
+		}
+	}
+	return results
 }
