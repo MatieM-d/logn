@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"syscall"
-
 	"github.com/MatieM-d/logn/internal"
 	"golang.org/x/term"
 )
@@ -222,15 +220,21 @@ func cmdList() {
 		return
 	}
 
-	services := internal.List(vault)
-	if len(services) == 0 {
+	if len(vault.Entries) == 0 {
 		fmt.Println("Хранилище пусто")
 		return
 	}
 
-	fmt.Println("Сохранённые сервисы:")
-	for i, service := range services {
-		fmt.Println(" ", strconv.Itoa(i+1)+".", service)
+	fmt.Println("\nСохранённые записи:")
+	fmt.Println("─────────────────────────────────────")
+	for i, entry := range vault.Entries {
+		fmt.Printf("%d. Сервис:  %s\n", i+1, entry.Service)
+		fmt.Printf("   Логин:   %s\n", entry.Login)
+		fmt.Printf("   Пароль:  %s\n", entry.Password)
+		if entry.Note != "" {
+			fmt.Printf("   Заметка: %s\n", entry.Note)
+		}
+		fmt.Println("─────────────────────────────────────")
 	}
 }
 
