@@ -18,3 +18,8 @@ type VaultFile struct {
 type Vault struct {
 	Entries []Entry `json:"entries"`
 }
+
+// Конфигурация программы
+type Config struct {
+	VaultPath string `json:"vault_path"`
+}

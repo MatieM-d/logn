@@ -61,6 +61,20 @@ func readPassword(prompt string) (string, error) {
 }
 
 func cmdInit() {
+	// Выбор пути к хранилищу
+	vaultPath, err := internal.SetupVaultPath()
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	// Сохраняем конфиг
+	config := &internal.Config{VaultPath: vaultPath}
+	if err := internal.SaveConfig(config); err != nil {
+		fmt.Println("Ошибка сохранения конфига:", err)
+		return
+	}
+
 	password, err := readPassword("Введите мастер-пароль: ")
 	if err != nil {
 		fmt.Println("Ошибка:", err)
@@ -84,6 +98,7 @@ func cmdInit() {
 	}
 
 	fmt.Println("Хранилище LOGN успешно создано!")
+	fmt.Println("Путь:", vaultPath)
 }
 
 func cmdAdd(service string) {
