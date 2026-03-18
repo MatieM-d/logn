@@ -145,3 +145,46 @@ func SetupVaultPath() (string, error) {
 		return defaultPath, nil
 	}
 }
+
+// Создание резервной копии .vault файла
+func BackupVault(backupPath string) error {
+	path, err := vaultPath()
+	if err != nil {
+		return err
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return errors.New("хранилище не найдено")
+	}
+
+	// Создаём папку если не существует
+	dir := filepath.Dir(backupPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+
+	return os.WriteFile(backupPath, data, 0600)
+}
+
+// Восстановление из резервной копии
+func RestoreVault(backupPath string) error {
+	// Проверяем что файл резервной копии существует
+	data, err := os.ReadFile(backupPath)
+	if err != nil {
+		return errors.New("файл резервной копии не найден: " + backupPath)
+	}
+
+	// Проверяем что это валидный .vault файл
+	var vf VaultFile
+	if err := json.Unmarshal(data, &vf); err != nil {
+		return errors.New("файл не является валидным хранилищем LOGN")
+	}
+
+	path, err := vaultPath()
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0600)
+}
