@@ -409,7 +409,6 @@ func cmdRestore(backupPath string) {
 	fmt.Println("Хранилище восстановлено из:", backupPath)
 }
 
-// Красит пароль в зелёный если безопасный, красный если нет
 func colorPassword(password string) string {
 	failed := internal.CheckPassword(password)
 	if len(failed) == 0 {
