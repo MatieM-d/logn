@@ -3,7 +3,9 @@ package internal
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
+	"unicode"
 )
 
 // Инициализация нового хранилища
@@ -125,6 +127,88 @@ func Search(vault *Vault, query string) []Entry {
 	for _, e := range vault.Entries {
 		if strings.Contains(strings.ToLower(e.Service), query) {
 			results = append(results, e)
+		}
+	}
+	return results
+}
+
+// Результат проверки пароля
+type CheckResult struct {
+	Service  string
+	Password string
+	Failed   []string // список проваленных критериев
+}
+
+// Проверка одного пароля
+func CheckPassword(password string) []string {
+	var failed []string
+
+	if len(password) < 8 {
+		failed = append(failed, fmt.Sprintf("слишком короткий (%d из 8 символов)", len(password)))
+	}
+
+	hasUpper := false
+	for _, c := range password {
+		if unicode.IsUpper(c) {
+			hasUpper = true
+			break
+		}
+	}
+	if !hasUpper {
+		failed = append(failed, "нет заглавных букв")
+	}
+
+	hasDigit := false
+	for _, c := range password {
+		if unicode.IsDigit(c) {
+			hasDigit = true
+			break
+		}
+	}
+	if !hasDigit {
+		failed = append(failed, "нет цифр")
+	}
+
+	hasSymbol := false
+	symbols := "!@#$%^&*()-_=+[]{}|;:,.<>?"
+	for _, c := range password {
+		if strings.ContainsRune(symbols, c) {
+			hasSymbol = true
+			break
+		}
+	}
+	if !hasSymbol {
+		failed = append(failed, "нет спецсимволов")
+	}
+
+	return failed
+}
+
+// Проверка конкретного сервиса
+func CheckOne(vault *Vault, service string) (*CheckResult, error) {
+	entry, err := Get(vault, service)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CheckResult{
+		Service:  entry.Service,
+		Password: entry.Password,
+		Failed:   CheckPassword(entry.Password),
+	}, nil
+}
+
+// Проверка всех паролей — возвращает только не прошедшие
+func CheckAll(vault *Vault) []CheckResult {
+	var results []CheckResult
+	for _, entry := range vault.Entries {
+		failed := CheckPassword(entry.Password)
+		if len(failed) > 0 {
+			results = append(results, CheckResult{
+				Service:  entry.Service,
+				Password: entry.Password,
+				Failed:   failed,
+			})
 		}
 	}
 	return results

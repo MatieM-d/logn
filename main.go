@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+
 	"github.com/MatieM-d/logn/internal"
 	"golang.org/x/term"
 )
@@ -42,11 +43,17 @@ func main() {
 	case "generate":
 		cmdGenerate()
 	case "search":
-    	if len(os.Args) < 3 {
-        	fmt.Println("Использование: logn search <запрос>")
-        	return
-    	}
-    	cmdSearch(os.Args[2])
+		if len(os.Args) < 3 {
+			fmt.Println("Использование: logn search <запрос>")
+			return
+		}
+		cmdSearch(os.Args[2])
+	case "check":
+		if len(os.Args) < 3 {
+			cmdCheckAll()
+		} else {
+			cmdCheckOne(os.Args[2])
+		}
 	default:
 		fmt.Println("Неизвестная команда:", command)
 		printHelp()
@@ -290,18 +297,84 @@ func cmdSearch(query string) {
 		fmt.Println("─────────────────────────────────────")
 	}
 }
+func cmdCheckOne(service string) {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	vault, _, err := internal.Open(password)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	result, err := internal.CheckOne(vault, service)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	fmt.Println("\n─────────────────────────────────────")
+	fmt.Println("Сервис: ", result.Service)
+	fmt.Println("Пароль: ", result.Password)
+	if len(result.Failed) == 0 {
+		fmt.Println("✓ Пароль прошёл проверку")
+	} else {
+		fmt.Println("✗ Пароль не прошёл проверку:")
+		for _, f := range result.Failed {
+			fmt.Println("  —", f)
+		}
+	}
+	fmt.Println("─────────────────────────────────────")
+}
+
+func cmdCheckAll() {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	vault, _, err := internal.Open(password)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	results := internal.CheckAll(vault)
+	if len(results) == 0 {
+		fmt.Println("✓ Все пароли прошли проверку!")
+		return
+	}
+
+	fmt.Printf("\nНайдено слабых паролей: %d\n", len(results))
+	for _, result := range results {
+		fmt.Println("─────────────────────────────────────")
+		fmt.Println("Сервис: ", result.Service)
+		fmt.Println("Пароль: ", result.Password)
+		fmt.Println("✗ Проблемы:")
+		for _, f := range result.Failed {
+			fmt.Println("  —", f)
+		}
+	}
+	fmt.Println("─────────────────────────────────────")
+}
 
 func printHelp() {
 	fmt.Println(`
 LOGN — менеджер паролей
 
 Команды:
-  logn init              Создать новое хранилище
-  logn add <сервис>      Добавить запись
-  logn get <сервис>      Получить пароль (копирует в буфер)
-  logn list              Список всех сервисов
-  logn search <запрос>   Поиск по названию сервиса
-  logn delete <сервис>   Удалить запись
-  logn generate          Сгенерировать пароль
-	`)
+  logn init                Создать новое хранилище
+  logn add <сервис>        Добавить запись
+  logn get <сервис>        Получить пароль (копирует в буфер)
+  logn list                Список всех записей
+  logn search <запрос>     Поиск по названию сервиса
+  logn check               Проверить все пароли
+  logn check <сервис>      Проверить пароль сервиса
+  logn delete <сервис>     Удалить запись
+  logn generate            Сгенерировать пароль
+`)
 }
