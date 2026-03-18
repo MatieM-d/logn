@@ -6,17 +6,17 @@ import (
 	"github.com/fatih/color"
 )
 
-var (
-	Red    = color.New(color.FgRed).SprintFunc()
-	Green  = color.New(color.FgGreen).SprintFunc()
-	Yellow = color.New(color.FgYellow).SprintFunc()
-	Blue   = color.New(color.FgCyan).SprintFunc()
-	Gray   = color.New(color.FgHiBlack).SprintFunc()
-	White  = color.New(color.FgWhite).SprintFunc()
-	Bold   = color.New(color.Bold).SprintFunc()
-)
+func InitColors() {
+	color.NoColor = false
+}
 
-func InitColors() {} // больше не нужна, fatih/color делает всё сам
+func Red(s string) string    { return color.New(color.FgRed).Sprint(s) }
+func Green(s string) string  { return color.New(color.FgGreen).Sprint(s) }
+func Yellow(s string) string { return color.New(color.FgYellow).Sprint(s) }
+func Blue(s string) string   { return color.New(color.FgCyan).Sprint(s) }
+func Gray(s string) string   { return color.New(color.FgHiBlack).Sprint(s) }
+func White(s string) string  { return color.New(color.FgWhite).Sprint(s) }
+func Bold(s string) string   { return color.New(color.Bold).Sprint(s) }
 
 func Separator() string {
 	return Gray("─────────────────────────────────────")

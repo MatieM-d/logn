@@ -3,13 +3,17 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/MatieM-d/logn/internal"
 	"golang.org/x/term"
 )
 
 func main() {
+	internal.InitColors()
+
 	if len(os.Args) < 2 {
 		printHelp()
 		return
@@ -54,6 +58,14 @@ func main() {
 		} else {
 			cmdCheckOne(os.Args[2])
 		}
+	case "backup":
+		cmdBackup()
+	case "restore":
+		if len(os.Args) < 3 {
+			fmt.Println("Использование: logn restore <путь>")
+			return
+		}
+		cmdRestore(os.Args[2])
 	default:
 		fmt.Println("Неизвестная команда:", command)
 		printHelp()
@@ -169,34 +181,36 @@ func cmdAdd(service string) {
 func cmdGet(service string) {
 	password, err := readPassword("Мастер-пароль: ")
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	vault, _, err := internal.Open(password)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	entry, err := internal.Get(vault, service)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
-	fmt.Println("Сервис:", entry.Service)
-	fmt.Println("Логин: ", entry.Login)
+	fmt.Println(internal.Separator())
+	fmt.Printf("Сервис: %s\n", internal.Blue(internal.Bold(entry.Service)))
+	fmt.Printf("Логин:  %s\n", internal.White(entry.Login))
 	if entry.Note != "" {
-		fmt.Println("Заметка:", entry.Note)
+		fmt.Printf("Заметка: %s\n", internal.Yellow(entry.Note))
 	}
+	fmt.Println(internal.Separator())
 
 	if err := internal.CopyToClipboard(entry.Password); err != nil {
-		fmt.Println("Ошибка копирования:", err)
+		internal.Error("Ошибка копирования: " + err.Error())
 		return
 	}
 
-	fmt.Println("Пароль скопирован в буфер! Очистится через 10 секунд.")
+	internal.Success("Пароль скопирован в буфер! Очистится через 10 секунд.")
 }
 
 func cmdDelete(service string) {
@@ -223,32 +237,32 @@ func cmdDelete(service string) {
 func cmdList() {
 	password, err := readPassword("Мастер-пароль: ")
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	vault, _, err := internal.Open(password)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	if len(vault.Entries) == 0 {
-		fmt.Println("Хранилище пусто")
+		fmt.Println(internal.Yellow("Хранилище пусто"))
 		return
 	}
 
-	fmt.Println("\nСохранённые записи:")
-	fmt.Println("─────────────────────────────────────")
+	fmt.Println(internal.Bold("\nСохранённые записи:"))
 	for i, entry := range vault.Entries {
-		fmt.Printf("%d. Сервис:  %s\n", i+1, entry.Service)
-		fmt.Printf("   Логин:   %s\n", entry.Login)
-		fmt.Printf("   Пароль:  %s\n", entry.Password)
+		fmt.Println(internal.Separator())
+		fmt.Printf("%s %s\n", internal.Gray(fmt.Sprintf("%d.", i+1)), internal.Blue(internal.Bold(entry.Service)))
+		fmt.Printf("   Логин:   %s\n", internal.White(entry.Login))
+		fmt.Printf("   Пароль:  %s\n", colorPassword(entry.Password))
 		if entry.Note != "" {
-			fmt.Printf("   Заметка: %s\n", entry.Note)
+			fmt.Printf("   Заметка: %s\n", internal.Yellow(entry.Note))
 		}
-		fmt.Println("─────────────────────────────────────")
 	}
+	fmt.Println(internal.Separator())
 }
 
 func cmdGenerate() {
@@ -297,73 +311,115 @@ func cmdSearch(query string) {
 		fmt.Println("─────────────────────────────────────")
 	}
 }
+
 func cmdCheckOne(service string) {
 	password, err := readPassword("Мастер-пароль: ")
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	vault, _, err := internal.Open(password)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	result, err := internal.CheckOne(vault, service)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
-	fmt.Println("\n─────────────────────────────────────")
-	fmt.Println("Сервис: ", result.Service)
-	fmt.Println("Пароль: ", result.Password)
+	fmt.Println(internal.Separator())
+	fmt.Printf("Сервис: %s\n", internal.Blue(internal.Bold(result.Service)))
+	fmt.Printf("Пароль: %s\n", colorPassword(result.Password))
+
 	if len(result.Failed) == 0 {
-		fmt.Println("✓ Пароль прошёл проверку")
+		internal.Success("Пароль прошёл проверку")
 	} else {
-		fmt.Println("✗ Пароль не прошёл проверку:")
+		internal.Error("Пароль не прошёл проверку:")
 		for _, f := range result.Failed {
-			fmt.Println("  —", f)
+			fmt.Println(internal.Red("  — " + f))
 		}
 	}
-	fmt.Println("─────────────────────────────────────")
+	fmt.Println(internal.Separator())
 }
 
 func cmdCheckAll() {
 	password, err := readPassword("Мастер-пароль: ")
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	vault, _, err := internal.Open(password)
 	if err != nil {
-		fmt.Println("Ошибка:", err)
+		internal.Error(err.Error())
 		return
 	}
 
 	results := internal.CheckAll(vault)
 	if len(results) == 0 {
-		fmt.Println("✓ Все пароли прошли проверку!")
+		internal.Success("Все пароли прошли проверку!")
 		return
 	}
 
-	fmt.Printf("\nНайдено слабых паролей: %d\n", len(results))
+	fmt.Println(internal.Red(internal.Bold(fmt.Sprintf("\nНайдено слабых паролей: %d", len(results)))))
 	for _, result := range results {
-		fmt.Println("─────────────────────────────────────")
-		fmt.Println("Сервис: ", result.Service)
-		fmt.Println("Пароль: ", result.Password)
-		fmt.Println("✗ Проблемы:")
+		fmt.Println(internal.Separator())
+		fmt.Printf("Сервис: %s\n", internal.Blue(internal.Bold(result.Service)))
+		fmt.Printf("Пароль: %s\n", colorPassword(result.Password))
+		fmt.Println(internal.Red("✗ Проблемы:"))
 		for _, f := range result.Failed {
-			fmt.Println("  —", f)
+			fmt.Println(internal.Red("  — " + f))
 		}
 	}
-	fmt.Println("─────────────────────────────────────")
+	fmt.Println(internal.Separator())
+}
+
+func cmdBackup() {
+	// Генерируем имя файла с датой
+	backupName := fmt.Sprintf("logn-backup-%s.vault", time.Now().Format("2006-01-02_15-04-05"))
+	backupPath := filepath.Join(`D:\Projects\logn\backups`, backupName)
+
+	if err := internal.BackupVault(backupPath); err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	fmt.Println("Резервная копия создана:", backupPath)
+}
+
+func cmdRestore(backupPath string) {
+	fmt.Print("Вы уверены? Текущее хранилище будет заменено (да/нет): ")
+	var confirm string
+	fmt.Scanln(&confirm)
+
+	if confirm != "да" {
+		fmt.Println("Отменено")
+		return
+	}
+
+	if err := internal.RestoreVault(backupPath); err != nil {
+		fmt.Println("Ошибка:", err)
+		return
+	}
+
+	fmt.Println("Хранилище восстановлено из:", backupPath)
+}
+
+// Красит пароль в зелёный если безопасный, красный если нет
+func colorPassword(password string) string {
+	failed := internal.CheckPassword(password)
+	if len(failed) == 0 {
+		return internal.Green(password)
+	}
+	return internal.Red(password)
 }
 
 func printHelp() {
-	fmt.Println(`
+	fmt.Print(`
 LOGN — менеджер паролей
 
 Команды:
@@ -374,6 +430,8 @@ LOGN — менеджер паролей
   logn search <запрос>     Поиск по названию сервиса
   logn check               Проверить все пароли
   logn check <сервис>      Проверить пароль сервиса
+  logn backup              Создать резервную копию
+  logn restore <путь>      Восстановить из резервной копии
   logn delete <сервис>     Удалить запись
   logn generate            Сгенерировать пароль
 `)
