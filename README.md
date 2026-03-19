@@ -13,6 +13,7 @@ A fast, secure, open-source CLI password manager written in Go.
 - 🔍 **Search** — quickly find passwords by service name
 - 🛡️ **Password checker** — audit all your passwords at once
 - 💾 **Backup & restore** — easily back up your vault
+- 📤 **Import / Export** — supports Bitwarden, LastPass, KeePass and CSV
 
 ## Installation
 
@@ -62,6 +63,14 @@ logn get github
 # Password is copied to clipboard and cleared after 10 seconds
 ```
 
+### Edit a password
+
+```bash
+logn edit github
+# Leave any field empty to keep the current value
+# Type "generate" in the password field to auto-generate a new one
+```
+
 ### List all passwords
 
 ```bash
@@ -106,6 +115,30 @@ logn generate
 # Generates a secure 20-character password
 ```
 
+### Export passwords
+
+```bash
+logn export
+# Exports all passwords to a CSV file
+# Warning: exported file contains passwords in plain text!
+```
+
+### Import passwords
+
+```bash
+# Import from CSV (duplicates are skipped)
+logn import bitwarden_export.csv
+
+# Import and overwrite existing entries
+logn import bitwarden_export.csv --overwrite
+```
+
+Supported import formats (auto-detected):
+- **Bitwarden** — export from Account → Tools → Export
+- **LastPass** — export from Account Options → Export
+- **KeePass** — export from File → Export → CSV
+- **LOGN** — previously exported LOGN CSV
+
 ### Backup vault
 
 ```bash
@@ -118,6 +151,8 @@ logn backup
 ```bash
 logn restore D:\Projects\logn\backups\logn-backup-2024-01-15_10-30-00.vault
 ```
+
+> You can also copy the `.vault` file to another machine and use it there with the same master password.
 
 ## Security
 
@@ -143,10 +178,6 @@ Master password + Salt → Argon2id → Encryption key
 
 Your master password is **never stored anywhere**. Every time you run LOGN it derives the encryption key from your password and the salt stored in the `.vault` file. If you forget your master password, there is no recovery option.
 
-## Transferring your vault
-
-Since the `.vault` file is self-contained (it includes the salt), you can copy it to another machine and use it there with the same master password. Just copy `.vault` and point LOGN to it on the new machine.
-
 ## Project Structure
 
 ```
@@ -158,7 +189,9 @@ logn/
 │   ├── vault.go        # Business logic
 │   ├── generator.go    # Password generator
 │   ├── clipboard.go    # Clipboard + auto-clear
-│   └── colors.go       # Color-coded CLI output
+│   ├── colors.go       # Color-coded CLI output
+│   ├── export.go       # CSV export
+│   └── import.go       # CSV import
 ├── main.go             # CLI interface
 ├── go.mod
 └── README.md
@@ -170,7 +203,21 @@ logn/
 - Keep your **master password safe** — there is no recovery option
 - The `.vault` location is set during `logn init` and saved in `config.json`
 - Backups are stored in the `backups/` folder and are also excluded from git
+- Exported CSV files contain passwords in **plain text** — handle with care
 
 ## License
 
-MIT License — feel free to use, modify and distribute.
+Copyright (C) 2024 MatieM-d
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
