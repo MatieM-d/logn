@@ -74,6 +74,12 @@ func main() {
 			return
 		}
 		cmdImport(os.Args[2])
+	case "edit":
+		if len(os.Args) < 3 {
+			fmt.Println("Использование: logn edit <сервис>")
+			return
+		}
+		cmdEdit(os.Args[2])
 	default:
 		fmt.Println("Неизвестная команда:", command)
 		printHelp()
@@ -486,6 +492,83 @@ func cmdImport(filePath string) {
 	internal.Success(fmt.Sprintf("Импорт завершён из %s", filePath))
 }
 
+func cmdEdit(service string) {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	vault, key, err := internal.Open(password)
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	// Получаем текущую запись
+	entry, err := internal.Get(vault, service)
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	fmt.Println(internal.Separator())
+	fmt.Printf("Редактирование: %s\n", internal.Blue(internal.Bold(service)))
+	fmt.Println(internal.Gray("Оставьте поле пустым чтобы не менять значение"))
+	fmt.Println(internal.Separator())
+
+	// Логин
+	fmt.Printf("Логин [%s]: ", internal.White(entry.Login))
+	var login string
+	fmt.Scanln(&login)
+	if login == "" {
+		login = entry.Login
+	}
+
+	// Пароль
+	fmt.Printf("Пароль [%s]: ", colorPassword(entry.Password))
+	var newPassword string
+	fmt.Scanln(&newPassword)
+	switch newPassword {
+	case "":
+    	newPassword = entry.Password
+	case "generate":
+		newPassword, err = internal.Generate(internal.GeneratorOptions{
+			Length:    20,
+			Uppercase: true,
+			Digits:    true,
+			Symbols:   true,
+		})
+    if err != nil {
+        internal.Error("Ошибка генерации пароля: " + err.Error())
+        return
+    }
+    fmt.Println("Сгенерирован пароль:", internal.Green(newPassword))
+}
+
+	// Заметка
+	fmt.Printf("Заметка [%s]: ", internal.Yellow(entry.Note))
+	var note string
+	fmt.Scanln(&note)
+	if note == "" {
+		note = entry.Note
+	}
+
+	updated := internal.Entry{
+		Service:  service,
+		Login:    login,
+		Password: newPassword,
+		Note:     note,
+	}
+
+	if err := internal.Edit(vault, key, service, updated); err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	internal.Success("Запись для " + service + " обновлена!")
+}
+
 func printHelp() {
 	fmt.Print(`
 LOGN — менеджер паролей
@@ -494,6 +577,7 @@ LOGN — менеджер паролей
   logn init                Создать новое хранилище
   logn add <сервис>        Добавить запись
   logn get <сервис>        Получить пароль (копирует в буфер)
+  logn edit <сервис>       Редактировать существующую запись
   logn list                Список всех записей
   logn search <запрос>     Поиск по названию сервиса
   logn check               Проверить все пароли

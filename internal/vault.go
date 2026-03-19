@@ -213,3 +213,14 @@ func CheckAll(vault *Vault) []CheckResult {
 	}
 	return results
 }
+
+// Редактирование существующей записи
+func Edit(vault *Vault, key []byte, service string, updated Entry) error {
+	for i, e := range vault.Entries {
+		if e.Service == service {
+			vault.Entries[i] = updated
+			return Save(vault, key)
+		}
+	}
+	return errors.New("запись для " + service + " не найдена")
+}
