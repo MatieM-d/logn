@@ -66,6 +66,14 @@ func main() {
 			return
 		}
 		cmdRestore(os.Args[2])
+	case "export":
+		cmdExport()
+	case "import":
+		if len(os.Args) < 3 {
+			fmt.Println("Использование: logn import <путь к файлу>")
+			return
+		}
+		cmdImport(os.Args[2])
 	default:
 		fmt.Println("Неизвестная команда:", command)
 		printHelp()
@@ -417,6 +425,67 @@ func colorPassword(password string) string {
 	return internal.Red(password)
 }
 
+func cmdExport() {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	vault, _, err := internal.Open(password)
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	exportPath := internal.DefaultExportPath()
+
+	if err := internal.ExportCSV(vault, exportPath); err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	fmt.Println(internal.Yellow("⚠️  Внимание: CSV файл содержит пароли в открытом виде!"))
+	internal.Success("Экспорт завершён: " + exportPath)
+}
+
+func cmdImport(filePath string) {
+	password, err := readPassword("Мастер-пароль: ")
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	vault, key, err := internal.Open(password)
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	// Спрашиваем что делать с дублями
+	fmt.Print("Перезаписывать существующие записи? (да/нет): ")
+	var answer string
+	fmt.Scanln(&answer)
+	overwrite := answer == "да"
+
+	result, err := internal.ImportCSV(vault, key, filePath, overwrite)
+	if err != nil {
+		internal.Error(err.Error())
+		return
+	}
+
+	fmt.Println(internal.Separator())
+	fmt.Printf("  %s Добавлено:  %d\n", internal.Green("✓"), result.Added)
+	if result.Skipped > 0 {
+		fmt.Printf("  %s Пропущено: %d\n", internal.Yellow("~"), result.Skipped)
+	}
+	if result.Errors > 0 {
+		fmt.Printf("  %s Ошибок:    %d\n", internal.Red("✗"), result.Errors)
+	}
+	fmt.Println(internal.Separator())
+	internal.Success(fmt.Sprintf("Импорт завершён из %s", filePath))
+}
+
 func printHelp() {
 	fmt.Print(`
 LOGN — менеджер паролей
@@ -433,5 +502,6 @@ LOGN — менеджер паролей
   logn restore <путь>      Восстановить из резервной копии
   logn delete <сервис>     Удалить запись
   logn generate            Сгенерировать пароль
+  logn export              Экспортировать пароли в CSV
 `)
 }
