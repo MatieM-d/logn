@@ -1,4 +1,5 @@
 *.vault
 *.exe
 *.bin
+*.csv
 /dist/
