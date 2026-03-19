@@ -70,10 +70,11 @@ func main() {
 		cmdExport()
 	case "import":
 		if len(os.Args) < 3 {
-			fmt.Println("Использование: logn import <путь к файлу>")
+			fmt.Println("Использование: logn import <путь> [--overwrite]")
 			return
 		}
-		cmdImport(os.Args[2])
+		overwrite := len(os.Args) > 3 && os.Args[3] == "--overwrite"
+		cmdImport(os.Args[2], overwrite)
 	case "edit":
 		if len(os.Args) < 3 {
 			fmt.Println("Использование: logn edit <сервис>")
@@ -455,7 +456,7 @@ func cmdExport() {
 	internal.Success("Экспорт завершён: " + exportPath)
 }
 
-func cmdImport(filePath string) {
+func cmdImport(filePath string, overwrite bool) {
 	password, err := readPassword("Мастер-пароль: ")
 	if err != nil {
 		internal.Error(err.Error())
@@ -467,12 +468,6 @@ func cmdImport(filePath string) {
 		internal.Error(err.Error())
 		return
 	}
-
-	// Спрашиваем что делать с дублями
-	fmt.Print("Перезаписывать существующие записи? (да/нет): ")
-	var answer string
-	fmt.Scanln(&answer)
-	overwrite := answer == "да"
 
 	result, err := internal.ImportCSV(vault, key, filePath, overwrite)
 	if err != nil {
@@ -574,18 +569,20 @@ func printHelp() {
 LOGN — менеджер паролей
 
 Команды:
-  logn init                Создать новое хранилище
-  logn add <сервис>        Добавить запись
-  logn get <сервис>        Получить пароль (копирует в буфер)
-  logn edit <сервис>       Редактировать существующую запись
-  logn list                Список всех записей
-  logn search <запрос>     Поиск по названию сервиса
-  logn check               Проверить все пароли
-  logn check <сервис>      Проверить пароль сервиса
-  logn backup              Создать резервную копию
-  logn restore <путь>      Восстановить из резервной копии
-  logn delete <сервис>     Удалить запись
-  logn generate            Сгенерировать пароль
-  logn export              Экспортировать пароли в CSV
+  logn init                			Создать новое хранилище
+  logn add <сервис>        			Добавить запись
+  logn get <сервис>        			Получить пароль (копирует в буфер)
+  logn edit <сервис>       			Редактировать существующую запись
+  logn list                			Список всех записей
+  logn search <запрос>     			Поиск по названию сервиса
+  logn check               			Проверить все пароли
+  logn check <сервис>      			Проверить пароль сервиса
+  logn backup              			Создать резервную копию
+  logn restore <путь>      			Восстановить из резервной копии
+  logn delete <сервис>     			Удалить запись
+  logn generate            			Сгенерировать пароль
+  logn export              			Экспортировать пароли в CSV
+  logn import <файл>            	Импортировать пароли из CSV
+  logn import <файл> --overwrite  	Импортировать с перезаписью дублей
 `)
 }
